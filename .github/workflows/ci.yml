@@ -1,0 +1,27 @@
+name: Crewbase checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+      - run: composer validate --strict
+      - run: composer install --no-interaction --prefer-dist
+      - name: Configure clean workspace
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan migrate --seed --force
+      - run: vendor/bin/pint --test --cache-file=/tmp/crewbase-pint-${{ github.run_id }}.cache
+      - run: php artisan test
+      - run: php artisan view:cache
